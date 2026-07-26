@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrated Citizen Connect - Register</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Integrated Citizen Connect</h1>
+    <nav>
+      <a href="index.html">Login</a>
+      <a href="register.html" class="active">Register</a>
+      <button class="theme-toggle" onclick="toggleTheme()">&#x1F319;</button>
+    </nav>
+  </header>
+
+  <div class="auth-wrapper">
+    <div class="card">
+      <h2>Create Account</h2>
+      <p class="subtitle">Join the community reporting platform</p>
+      <div id="alert-container"></div>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="fullname">Full Name</label>
+          <input type="text" id="fullname" required placeholder="Enter your full name">
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" required placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" required placeholder="e.g. 0712 345 678">
+        </div>
+        <div class="form-group">
+          <label for="ward">Ward</label>
+          <select id="ward" required>
+            <option value="">Select your ward</option>
+            <option value="Londiani">Londiani</option>
+            <option value="Kedowa">Kedowa</option>
+            <option value="Kipsinende">Kipsinende</option>
+            <option value="Kipkelion">Kipkelion</option>
+            <option value="Kunyak">Kunyak</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="Create a password (min 6 characters)">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Create Account</button>
+      </form>
+      <p class="link">Already have an account? <a href="index.html">Sign in</a></p>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 Integrated Citizen Connect &mdash; Londiani Sub-County</footer>
+
+  <script src="../assets/js/script.js"></script>
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById('fullname').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        ward: document.getElementById('ward').value,
+        password: document.getElementById('password').value,
+        role: 'citizen'
+      };
+      try {
+        const res = await apiRequest('POST', '/auth/register', data);
+        setAuth(res.token, res.user);
+        showAlert('Account created successfully!', 'success');
+        setTimeout(() => { window.location.href = 'submit-complaint.html'; }, 1000);
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    });
+  </script>
+</body>
+</html>

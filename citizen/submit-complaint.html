@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Complaint - Integrated Citizen Connect</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Integrated Citizen Connect</h1>
+    <nav>
+      <a href="submit-complaint.html" class="active">Report Issue</a>
+      <a href="track-status.html">Track Status</a>
+      <a href="#" id="logoutLink">Logout</a>
+      <button class="theme-toggle" onclick="toggleTheme()">&#x1F319;</button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Report a Community Issue</h2>
+      <p class="subtitle" style="color:#666;font-size:0.9rem;margin-bottom:1.5rem;">
+        Use this form to report problems like road damage, water shortages, sanitation issues, and more.
+      </p>
+      <div id="alert-container"></div>
+      <form id="complaintForm">
+        <div class="form-group">
+          <label for="category">Issue Category</label>
+          <select id="category" required>
+            <option value="">Select category</option>
+            <option value="roads">Roads & Infrastructure</option>
+            <option value="water">Water Supply</option>
+            <option value="sanitation">Sanitation & Waste Management</option>
+            <option value="health">Public Health</option>
+            <option value="security">Security & Safety</option>
+            <option value="electricity">Electricity & Street Lighting</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="title">Issue Title</label>
+          <input type="text" id="title" required placeholder="Brief title of the issue">
+        </div>
+        <div class="form-group">
+          <label for="description">Detailed Description</label>
+          <textarea id="description" required placeholder="Describe the problem in detail, including how it affects the community..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="location">Location (Ward)</label>
+          <select id="location" required>
+            <option value="">Select your ward</option>
+            <option value="Londiani">Londiani</option>
+            <option value="Kedowa">Kedowa</option>
+            <option value="Kipsinende">Kipsinende</option>
+            <option value="Kipkelion">Kipkelion</option>
+            <option value="Kunyak">Kunyak</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="priority">Priority Level</label>
+          <select id="priority" required>
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Report</button>
+      </form>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 Integrated Citizen Connect &mdash; Londiani Sub-County</footer>
+
+  <script src="../assets/js/script.js"></script>
+  <script>
+    requireAuth();
+
+    document.getElementById('logoutLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearAuth();
+      window.location.href = 'index.html';
+    });
+
+    document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        category: document.getElementById('category').value,
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        location: document.getElementById('location').value,
+        priority: document.getElementById('priority').value
+      };
+      try {
+        const res = await apiRequest('POST', '/complaints', data);
+        window.location.href = 'track-status.html';
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    });
+  </script>
+</body>
+</html>

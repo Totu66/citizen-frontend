@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Integrated Citizen Connect</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Admin Panel &mdash; Londiani Sub-County</h1>
+    <nav>
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="manage-issues.html">Manage Issues</a>
+      <a href="reports.html">Reports</a>
+      <a href="#" id="logoutLink">Logout</a>
+      <button class="theme-toggle" onclick="toggleTheme()">&#x1F319;</button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="grid-2" id="statsGrid"></div>
+
+    <div class="card mt-2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <h2 style="margin:0;">All Reported Issues &mdash; Londiani Sub-County</h2>
+        <div>
+          <button class="btn btn-sm btn-primary" onclick="printTable()">Print</button>
+          <button class="btn btn-sm btn-success" onclick="downloadPDF()">Download PDF</button>
+        </div>
+      </div>
+      <div id="dashboardContent">
+        <div class="filter-bar">
+          <select id="filterStatus" onchange="loadDashboard()">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="under_review">Under Review</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <select id="filterCategory" onchange="loadDashboard()">
+            <option value="">All Categories</option>
+            <option value="roads">Roads</option>
+            <option value="water">Water</option>
+            <option value="sanitation">Sanitation</option>
+            <option value="health">Health</option>
+            <option value="security">Security</option>
+            <option value="electricity">Electricity</option>
+          </select>
+          <select id="filterPriority" onchange="loadDashboard()">
+            <option value="">All Priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div id="alert-container"></div>
+        <div id="allIssues"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="responseModal"></div>
+
+  <footer>&copy; 2026 Integrated Citizen Connect &mdash; Londiani Sub-County</footer>
+
+  <script src="../assets/js/script.js"></script>
+  <script>
+    const user = getUser();
+    if (!user || user.role !== 'admin') window.location.href = '../citizen/index.html';
+
+    document.getElementById('logoutLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearAuth();
+      window.location.href = '../citizen/index.html';
+    });
+
+    function stripTableForExport(table) {
+      const clone = table.cloneNode(true);
+      const rows = clone.querySelectorAll('tr');
+      for (const row of rows) {
+        if (row.classList.contains('section-header')) {
+          const td = row.querySelector('td');
+          if (td && td.getAttribute('colspan') === '8') td.setAttribute('colspan', '6');
+          continue;
+        }
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length >= 8) {
+          cells[7].remove();
+          cells[5].remove();
+        } else if (cells.length >= 7) {
+          cells[5].remove();
+        }
+      }
+      return clone;
+    }
+
+    function printTable() {
+      const content = document.getElementById('dashboardContent');
+      const stats = document.getElementById('statsGrid');
+      const table = content.querySelector('table');
+      if (!table) { showAlert('No data to print.', 'danger'); return; }
+      const cleaned = stripTableForExport(table);
+      const win = window.open('', '_blank');
+      win.document.write('<html><head><title>All Reported Issues</title><style>');
+      win.document.write('body{font-family:"Segoe UI",sans-serif;padding:2rem;}');
+      win.document.write('table{width:100%;border-collapse:collapse;margin-top:1rem;}');
+      win.document.write('th,td{padding:0.5rem;text-align:left;border:1px solid #ccc;font-size:0.8rem;}');
+      win.document.write('th{background:#f0f4f8;}');
+      win.document.write('.section-header td{background:#e8edf4;font-weight:700;}');
+      win.document.write('.stat-card{display:inline-block;padding:0.5rem 1rem;margin:0.3rem;border:1px solid #ddd;border-radius:6px;text-align:center;min-width:90px;}');
+      win.document.write('.stat-card h3{font-size:0.75rem;margin-bottom:0.2rem;}');
+      win.document.write('.stat-card .number{font-size:1.2rem;font-weight:700;}');
+      win.document.write('</style></head><body>');
+      win.document.write('<h2>All Reported Issues &mdash; Londiani Sub-County</h2>');
+      win.document.write('<p>Generated: ' + new Date().toLocaleString() + '</p>');
+      win.document.write('<div style="margin-bottom:1rem;">' + stats.innerHTML + '</div>');
+      win.document.write(cleaned.outerHTML);
+      win.document.write('</body></html>');
+      win.document.close();
+      win.print();
+    }
+
+    async function downloadPDF() {
+      const content = document.getElementById('dashboardContent');
+      const stats = document.getElementById('statsGrid');
+      const table = content.querySelector('table');
+      if (!table) { showAlert('No data to download.', 'danger'); return; }
+      showAlert('Generating PDF...', 'info');
+      const cleaned = stripTableForExport(table);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = '<div style="margin-bottom:1rem;">' + stats.innerHTML + '</div>' + cleaned.outerHTML;
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: 'issues_' + new Date().toISOString().slice(0, 10) + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+      };
+      await html2pdf().set(opt).from(wrapper).save();
+    }
+
+    async function loadDashboard() {
+      try {
+        const statsRes = await apiRequest('GET', '/complaints/stats');
+        const stats = statsRes.stats;
+        document.getElementById('statsGrid').innerHTML =
+          '<div class="stat-card"><h3>Total Issues</h3><div class="number">' + (stats.total || 0) + '</div></div>' +
+          '<div class="stat-card"><h3>Pending</h3><div class="number">' + (stats.pending || 0) + '</div></div>' +
+          '<div class="stat-card"><h3>In Progress</h3><div class="number">' + (stats.in_progress || 0) + '</div></div>' +
+          '<div class="stat-card"><h3>Resolved</h3><div class="number">' + (stats.resolved || 0) + '</div></div>';
+
+        const status = document.getElementById('filterStatus').value;
+        const category = document.getElementById('filterCategory').value;
+        const priority = document.getElementById('filterPriority').value;
+        let url = '/complaints?';
+        if (status) url += 'status=' + status + '&';
+        if (category) url += 'category=' + category + '&';
+        if (priority) url += 'priority=' + priority + '&';
+
+        const all = await apiRequest('GET', url);
+        const list = document.getElementById('allIssues');
+        if (all.complaints.length === 0) {
+          list.innerHTML = '<p style="color:var(--subtitle-color);">No issues match the current filters.</p>';
+          return;
+        }
+        const statusOrder = { pending: 0, under_review: 1, in_progress: 2, resolved: 3 };
+        const sectionLabels = {
+          pending: 'Pending / Under Review',
+          under_review: 'Pending / Under Review',
+          in_progress: 'In Progress',
+          resolved: 'Resolved'
+        };
+        all.complaints.sort((a, b) => (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99));
+        let lastSection = '';
+        let html = '<table><thead><tr><th>Date</th><th>Citizen</th><th>Category</th><th>Title</th><th>Location</th><th>Priority</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+        for (const c of all.complaints) {
+          const section = sectionLabels[c.status] || c.status;
+          if (section !== lastSection) {
+            html += '<tr class="section-header"><td colspan="8"><strong>' + section + '</strong></td></tr>';
+            lastSection = section;
+          }
+          html += '<tr>' +
+            '<td>' + formatDate(c.created_at) + '</td>' +
+            '<td>' + (c.citizen_name || 'Unknown') + '</td>' +
+            '<td>' + c.category + '</td>' +
+            '<td>' + c.title + '</td>' +
+            '<td>' + c.location + '</td>' +
+            '<td>' + priorityBadge(c.priority) + '</td>' +
+            '<td>' + statusBadge(c.status) + '</td>' +
+            '<td><button class="btn btn-sm btn-primary" onclick="openResponse(' + "'" + c._id + "'" + ')">Update</button></td>' +
+            '</tr>';
+        }
+        html += '</tbody></table>';
+        list.innerHTML = html;
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    }
+
+    async function openResponse(id) {
+      try {
+        const res = await apiRequest('GET', '/complaints/' + id);
+        const c = res.complaint;
+        const existing = document.getElementById('responseModal');
+        if (existing) existing.innerHTML = '';
+        const html = '<div class="container" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;overflow-y:auto;">' +
+          '<div class="card" style="max-width:600px;width:100%;max-height:90vh;overflow-y:auto;">' +
+          '<h3>Update Issue: ' + c.title + '</h3>' +
+          '<p><strong>Category:</strong> ' + c.category + ' | <strong>Location:</strong> ' + c.location + '</p>' +
+          '<p><strong>Current Status:</strong> ' + statusBadge(c.status) + '</p>' +
+          '<hr style="margin:1rem 0;">' +
+          '<form id="updateForm">' +
+          '<div class="form-group"><label>Update Status</label><select id="newStatus">' +
+          '<option value="resolved" selected>Resolved</option>' +
+          '<option value="in_progress">In Progress</option>' +
+          '<option value="under_review">Under Review</option>' +
+          '<option value="pending">Pending</option>' +
+          '</select></div>' +
+          '<div class="form-group"><label>Department</label><input type="text" id="dept" placeholder="e.g. Water Department"></div>' +
+          '<div class="form-group"><label>Action Taken</label><textarea id="actionTaken" placeholder="Describe what action was taken..."></textarea></div>' +
+          '<div class="form-group"><label>Remarks (optional)</label><textarea id="remarks" placeholder="Any additional remarks..."></textarea></div>' +
+          '<button type="submit" class="btn btn-success">Save Update</button> ' +
+          '<button type="button" class="btn btn-danger" onclick="document.getElementById(\'responseModal\').innerHTML=\'\'">Cancel</button>' +
+          '</form></div></div>';
+        document.getElementById('responseModal').innerHTML = html;
+
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            const payload = {
+              status: document.getElementById('newStatus').value,
+              department: document.getElementById('dept').value,
+              action_taken: document.getElementById('actionTaken').value,
+              remarks: document.getElementById('remarks').value
+            };
+            await apiRequest('PUT', '/complaints/' + id + '/status', payload);
+            showAlert('Issue updated successfully!', 'success');
+            document.getElementById('responseModal').innerHTML = '';
+            loadDashboard();
+          } catch (err) {
+            showAlert(err.message, 'danger');
+          }
+        });
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
