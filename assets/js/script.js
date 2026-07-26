@@ -1,4 +1,4 @@
-const API_BASE = (window.API_URL || 'http://localhost:5000') + '/api';
+const API_BASE = (window.API_URL || window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://citizen-backend-ngiq.onrender.com') + '/api';
 
 function getToken() {
   return localStorage.getItem('token');
