@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users - Integrated Citizen Connect</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Admin Panel &mdash; Londiani Sub-County</h1>
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="manage-issues.html">Manage Issues</a>
+      <a href="users.html" class="active">Users</a>
+      <a href="reports.html">Reports</a>
+      <a href="#" id="logoutLink">Logout</a>
+      <button class="theme-toggle" onclick="toggleTheme()">&#x1F319;</button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <h2 style="margin:0;">Manage Users</h2>
+        <button class="btn btn-sm btn-success" onclick="showAddUser()">+ Add User</button>
+      </div>
+      <div id="alert-container"></div>
+      <div id="usersTable"></div>
+    </div>
+  </div>
+
+  <div id="userModal"></div>
+
+  <footer>&copy; 2026 Integrated Citizen Connect &mdash; Londiani Sub-County</footer>
+
+  <script src="../assets/js/script.js"></script>
+  <script>
+    const user = getUser();
+    if (!user || user.role !== 'admin') window.location.href = '../citizen/index.html';
+
+    document.getElementById('logoutLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearAuth();
+      window.location.href = '../citizen/index.html';
+    });
+
+    async function loadUsers() {
+      try {
+        const res = await apiRequest('GET', '/users');
+        const list = document.getElementById('usersTable');
+        if (res.users.length === 0) {
+          list.innerHTML = '<p style="color:var(--subtitle-color);">No users found.</p>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Ward</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+        for (const u of res.users) {
+          html += '<tr>' +
+            '<td>' + u.name + '</td>' +
+            '<td>' + u.email + '</td>' +
+            '<td>' + u.phone + '</td>' +
+            '<td>' + u.ward + '</td>' +
+            '<td>' + roleBadge(u.role) + '</td>' +
+            '<td>' + formatDate(u.created_at) + '</td>' +
+            '<td>' +
+            '<button class="btn btn-sm btn-primary" onclick="editUser(\'' + u._id + '\')">Edit</button> ' +
+            (u.email !== 'admin@londiani.go.ke' ? '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u._id + '\')">Delete</button>' : '') +
+            '</td>' +
+            '</tr>';
+        }
+        html += '</tbody></table>';
+        list.innerHTML = html;
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    }
+
+    function roleBadge(role) {
+      const cls = role === 'admin' ? 'status-in_progress' : 'status-pending';
+      return '<span class="status-badge ' + cls + '">' + role + '</span>';
+    }
+
+    function showAddUser() {
+      showUserForm(null, 'Add User');
+    }
+
+    async function editUser(id) {
+      try {
+        const res = await apiRequest('GET', '/users');
+        const u = res.users.find(x => x._id === id);
+        if (!u) { showAlert('User not found', 'danger'); return; }
+        showUserForm(u, 'Edit User');
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    }
+
+    function showUserForm(u, title) {
+      const modal = document.getElementById('userModal');
+      const isEdit = !!u;
+      modal.innerHTML =
+        '<div class="container" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;overflow-y:auto;">' +
+        '<div class="card" style="max-width:500px;width:100%;">' +
+        '<h3>' + title + '</h3>' +
+        '<form id="userForm">' +
+        '<div class="form-group"><label>Name</label><input type="text" id="uf_name" value="' + (u ? u.name : '') + '" required></div>' +
+        '<div class="form-group"><label>Email</label><input type="email" id="uf_email" value="' + (u ? u.email : '') + '" required></div>' +
+        '<div class="form-group"><label>Phone</label><input type="text" id="uf_phone" value="' + (u ? u.phone : '') + '"></div>' +
+        '<div class="form-group"><label>Ward</label>' +
+        '<select id="uf_ward"><option value="">Select ward</option>' +
+        '<option value="Londiani"' + (u && u.ward === 'Londiani' ? ' selected' : '') + '>Londiani</option>' +
+        '<option value="Kedowa"' + (u && u.ward === 'Kedowa' ? ' selected' : '') + '>Kedowa</option>' +
+        '<option value="Kipsinende"' + (u && u.ward === 'Kipsinende' ? ' selected' : '') + '>Kipsinende</option>' +
+        '<option value="Kipkelion"' + (u && u.ward === 'Kipkelion' ? ' selected' : '') + '>Kipkelion</option>' +
+        '<option value="Kunyak"' + (u && u.ward === 'Kunyak' ? ' selected' : '') + '>Kunyak</option>' +
+        '</select></div>' +
+        '<div class="form-group"><label>Role</label>' +
+        '<select id="uf_role"><option value="citizen"' + (u && u.role === 'citizen' ? ' selected' : '') + '>Citizen</option>' +
+        '<option value="admin"' + (u && u.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+        '</select></div>' +
+        '<div class="form-group"><label>Password' + (isEdit ? ' (leave blank to keep)' : '') + '</label><input type="password" id="uf_password" ' + (isEdit ? '' : 'required') + '></div>' +
+        '<button type="submit" class="btn btn-success">Save</button> ' +
+        '<button type="button" class="btn btn-danger" onclick="document.getElementById(\'userModal\').innerHTML=\'\'">Cancel</button>' +
+        '</form></div></div>';
+
+      document.getElementById('userForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+          name: document.getElementById('uf_name').value,
+          email: document.getElementById('uf_email').value,
+          phone: document.getElementById('uf_phone').value,
+          ward: document.getElementById('uf_ward').value,
+          role: document.getElementById('uf_role').value
+        };
+        const pw = document.getElementById('uf_password').value;
+        if (pw) payload.password = pw;
+        try {
+          if (isEdit) {
+            await apiRequest('PUT', '/users/' + u._id, payload);
+            showAlert('User updated!', 'success');
+          } else {
+            if (!pw) { showAlert('Password is required', 'danger'); return; }
+            await apiRequest('POST', '/users', payload);
+            showAlert('User created!', 'success');
+          }
+          document.getElementById('userModal').innerHTML = '';
+          loadUsers();
+        } catch (err) {
+          showAlert(err.message, 'danger');
+        }
+      });
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Delete this user?')) return;
+      try {
+        await apiRequest('DELETE', '/users/' + id);
+        showAlert('User deleted', 'success');
+        loadUsers();
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
