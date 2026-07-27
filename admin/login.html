@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Integrated Citizen Connect</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Admin Portal</h1>
+    <nav>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">&#x1F319;</button>
+    </nav>
+  </header>
+
+  <div class="auth-wrapper">
+    <div class="card">
+      <h2>Admin Sign In</h2>
+      <p class="subtitle">Sign in to manage the platform</p>
+      <div id="alert-container"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" required placeholder="admin@email.com">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required placeholder="Enter your password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 Integrated Citizen Connect &mdash; Londiani Sub-County</footer>
+
+  <script src="../assets/js/script.js"></script>
+  <script>
+    redirectIfLoggedIn();
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const res = await apiRequest('POST', '/auth/login', { email, password });
+        if (res.user.role !== 'admin') {
+          showAlert('Only admins can log in here. Use the Citizen Portal instead.', 'danger');
+          return;
+        }
+        setAuth(res.token, res.user);
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        showAlert(err.message, 'danger');
+      }
+    });
+  </script>
+</body>
+</html>

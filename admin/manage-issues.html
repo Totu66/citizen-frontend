@@ -58,7 +58,7 @@
   <script src="../assets/js/script.js"></script>
   <script>
     const user = getUser();
-    if (!user || user.role !== 'admin') window.location.href = '../citizen/index.html';
+    if (!user || user.role !== 'admin') window.location.href = 'login.html';
 
     document.getElementById('logoutLink').addEventListener('click', (e) => {
       e.preventDefault();
