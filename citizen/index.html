@@ -47,12 +47,12 @@
       const password = document.getElementById('password').value;
       try {
         const res = await apiRequest('POST', '/auth/login', { email, password });
-        setAuth(res.token, res.user);
         if (res.user.role === 'admin') {
-          window.location.href = '../admin/dashboard.html';
-        } else {
-          window.location.href = 'submit-complaint.html';
+          showAlert('Admins cannot log in here. Use the Admin Portal instead.', 'danger');
+          return;
         }
+        setAuth(res.token, res.user);
+        window.location.href = 'submit-complaint.html';
       } catch (err) {
         showAlert(err.message, 'danger');
       }
